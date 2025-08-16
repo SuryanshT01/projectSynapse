@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Upload, FileText } from 'lucide-react';
@@ -7,7 +7,9 @@ const HomePage = () => {
   const navigate = useNavigate();
   const libraryInputRef = useRef<HTMLInputElement>(null);
   const readerInputRef = useRef<HTMLInputElement>(null);
-
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState('');
+  
   const handleLibraryUpload = () => {
     libraryInputRef.current?.click();
   };
@@ -16,13 +18,37 @@ const HomePage = () => {
     readerInputRef.current?.click();
   };
 
-  const handleLibraryFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLibraryFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      // TODO: Send files to backend
-      console.log('Library files selected:', files);
-      // For now, just navigate to reader
-      navigate('/reader');
+      setIsUploading(true);
+      setUploadMessage('Starting upload...');
+
+      const formData = new FormData();
+      // The backend expects a field named "files"
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i]);
+      }
+
+      try {
+        // Use the backend URL. Vite's import.meta.env can make this configurable.
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${apiUrl}/api/ingest`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.detail || 'An unknown error occurred.');
+        }
+        setUploadMessage(result.message || 'Upload complete!');
+      } catch (error) {
+        console.error('Error uploading files:', error);
+        setUploadMessage(`Upload failed: ${error.message}`);
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -51,7 +77,7 @@ const HomePage = () => {
         {/* Action Buttons */}
         <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
           <div 
-            className="group cursor-pointer"
+            className={`group ${isUploading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
             onClick={handleLibraryUpload}
           >
             <div className="bg-card border-2 border-border rounded-2xl p-8 transition-all duration-200 hover:border-primary hover:shadow-lg hover:-translate-y-1">
@@ -65,8 +91,8 @@ const HomePage = () => {
                 <p className="text-muted-foreground text-center">
                   Upload multiple PDF documents to your library for future reference and analysis
                 </p>
-                <Button variant="outline" className="w-full max-w-xs">
-                  Choose Files (up to 30)
+                <Button variant="outline" className="w-full max-w-xs" disabled={isUploading}>
+                  {isUploading ? 'Uploading...' : 'Choose Files'}
                 </Button>
               </div>
             </div>
@@ -94,6 +120,11 @@ const HomePage = () => {
             </div>
           </div>
         </div>
+        
+        {/* Upload Status Message */}
+        {uploadMessage && (
+          <p className="text-muted-foreground mt-8">{uploadMessage}</p>
+        )}
 
         {/* Hidden file inputs */}
         <input

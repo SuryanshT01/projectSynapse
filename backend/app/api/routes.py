@@ -37,7 +37,7 @@ class RelatedSection(BaseModel):
 async def ingest_documents(background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)):
     """
     Handles bulk upload of 'past' PDFs. Responds immediately and processes in the background.
-    """
+    """ 
     saved_files = []
     for file in files:
         file_path = os.path.join(settings.UPLOAD_DIR, file.filename)

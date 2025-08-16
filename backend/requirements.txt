@@ -15,6 +15,8 @@ numpy
 pandas
 pytesseract
 joblib
+azure-cognitiveservices-speech
+
 
 # PDF Processing (from Round 1A)
 PyMuPDF
