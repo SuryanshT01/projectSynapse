@@ -6,14 +6,23 @@
     <title>Document Insight Platform</title>
     <meta name="description" content="Upload, analyze, and extract insights from PDF documents with AI-powered tools" />
     <meta name="author" content="Document Insight Platform" />
-
+    
     <meta property="og:title" content="Document Insight Platform" />
     <meta property="og:description" content="Upload, analyze, and extract insights from PDF documents with AI-powered tools" />
     <meta property="og:type" content="website" />
-
     <meta name="twitter:card" content="summary_large_image" />
-  </head>
 
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self' https://*.adobe.com https://*.adobe.io; 
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.adobe.com; 
+                   connect-src 'self' https://*.adobe.com https://*.adobe.io http://localhost:8000 ws://localhost:*; 
+                   img-src 'self' data: blob: https://*.adobe.com; 
+                   style-src 'self' 'unsafe-inline' https://*.adobe.com;
+                   worker-src 'self' blob: https://*.adobe.com;
+                   frame-src 'self' blob: https://*.adobe.com;
+                   font-src 'self' data: https://*.adobe.com;"
+    >
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

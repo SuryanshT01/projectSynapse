@@ -1,0 +1,114 @@
+[
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "Feature Clarifications",
+    "page": 1,
+    "chunk_text": "1.What exactly does the \u201cSnippets\u201d feature require in terms of functionality and output? o   User journey:\nmost relevant to the selection. And which sentences (\u201csnippets\u201d) from those sections  are most relevant. 3. If the user clicks one of these snippets/sections, the corresponding PDF (which may\nbe different from the current PDF) should be shown with that section in view."
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "Feature Clarifications",
+    "page": 1,
+    "chunk_text": "If the user clicks one of these snippets/sections, the corresponding PDF (which may\nbe different from the current PDF) should be shown with that section in view. 4. The system also generates insights such as examples, contradictions, trends, etc. Based on the documents, possibly using LLMs. 5."
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "Feature Clarifications",
+    "page": 1,
+    "chunk_text": "5. And give an option to generate an engaging podcast based on these snippets. a.   Keyword similarity, or  b.   Semantic meaning/context? c.   Up to you \u2013 we will measure relevance. 3."
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "Feature Clarifications",
+    "page": 1,
+    "chunk_text": "3. For \u201cpodcast mode,\u201d is it just text-to-audio playback, or is additional formatting/content design\nexpected? a. We will judge based on the quality of the podcast \u2013 including content relevance, flow,\nnaturalness, ...  4. What is the accuracy benchmark for offline relevant section extraction (e.g., 80%+ as mentioned\nbefore)?"
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "Feature Clarifications",
+    "page": 1,
+    "chunk_text": "What is the accuracy benchmark for offline relevant section extraction (e.g., 80%+ as mentioned\nbefore)? a. We have our internal rubric that weights relevance, insightfulness, etc."
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "File Handling & Input Flow",
+    "page": 1,
+    "chunk_text": "o   A bunch of files initially followed by an additional PDF. This additional PDF should be\nshown in the UI, and the insights generated. 2. What exactly are \u201cpast PDFs,\u201d and how are they different from PDFs uploaded for the first time? o   User Journey is that there are a few files which were originally uploaded by the user initially,\nand then the user comes back and adds additional file, and generated insights on it."
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "File Handling & Input Flow",
+    "page": 1,
+    "chunk_text": "o   User Journey is that there are a few files which were originally uploaded by the user initially,\nand then the user comes back and adds additional file, and generated insights on it. 3. For this round, are we expected to run both Round 1A and 1B models together and produce a\ncombined result? o   For the finale not all of 1a and 1b is required to run, you need to run only part which can\ncapture the section in the finale challenge. 4."
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "File Handling & Input Flow",
+    "page": 1,
+    "chunk_text": "4. Are the \u201csections\u201d and \u201csnippets\u201d in the requirement referring to:\no   The sections generated in Round 1A  o   The summaries generated in Round 1B  o   Or something else entirely? o   Sections are same as Round 1a from the original PDFs, and snippets are relevant sentences\nfrom those sections. 5. Is the interface supposed to work with a single PDF at a time or across multiple PDFs at once?"
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "File Handling & Input Flow",
+    "page": 1,
+    "chunk_text": "Is the interface supposed to work with a single PDF at a time or across multiple PDFs at once? o   The document which is accessed should be visible and the insights and podcasts will need to\nbe generated across all documents. 6. Should the application connect information between multiple documents automatically, or only when\nprompted by the user? o   This will be based on text selection"
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "Prompt Handling & User Interaction",
+    "page": 2,
+    "chunk_text": "automatically? tabs/sessions? needs to be retained."
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "API Integration & LLM Usage",
+    "page": 2,
+    "chunk_text": "original logic remain untouched? 1. Yes, sure. 2. For the \u201csnippets\u201d feature, can we use API calls, or must it be entirely local?"
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "API Integration & LLM Usage",
+    "page": 2,
+    "chunk_text": "For the \u201csnippets\u201d feature, can we use API calls, or must it be entirely local? approach? TTS for local development?"
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "Online vs. Offline Requirements",
+    "page": 2,
+    "chunk_text": "still count as \u201coffline\u201d usage? 1. PDF Embed API is allowed to make network usage  4. Are we expected to add an offline fallback for PDF rendering in case internet is unavailable?"
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "Backend & Hosting",
+    "page": 3,
+    "chunk_text": "server for evaluation, we will run the docker in our environment for evaluation."
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "Execution Time & Performance Constraints \u2013",
+    "page": 3,
+    "chunk_text": "seconds \u2014 does this also apply to persona-based queries? same limit as previous round applies. 2. Is the 10-second execution limit per document or for the whole batch, regardless of PDF size (e.g.,\n10 seconds? size to be less than 20 GB."
+  },
+  {
+    "doc_id": "97c9049a-d364-4b27-a49a-2eff4fcbc034",
+    "doc_name": "FAQ & User Journey.pdf",
+    "section_title": "Execution Time & Performance Constraints \u2013",
+    "page": 3,
+    "chunk_text": "size to be less than 20 GB. Embed API useful links\nEvents:  https://developer.adobe.com/document-services/docs/overview/pdf-embed- api/howtodata/#basic-events\n- Events like SELECTION_END, PAGES_IN_VIEW_CHANGE, etc might be useful. getSelectedContent:  https://developer.adobe.com/document-services/docs/overview/pdf-embed- api/howtos_ui/#getselectedcontent     goToLocation:  https://developer.adobe.com/document-services/docs/overview/pdf-embed- api/howtos_ui/#gotolocation       Zoom APIs:  https://developer.adobe.com/document-services/docs/overview/pdf-embed- api/howtos_ui/#zoom-apis  - Might be needed if you want to build your own UI for zoom but otherwise  zoom buttons are already present in the default viewer that comes with PDF Embed API."
+  }
+]

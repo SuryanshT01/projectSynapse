@@ -55,9 +55,8 @@ const HomePage = () => {
   const handleReaderFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // TODO: Send file to backend
-      console.log('Reader file selected:', file);
-      navigate('/reader');
+      // Navigate to reader view with the uploaded file
+      navigate('/reader', { state: { uploadedFile: file } });
     }
   };
 
