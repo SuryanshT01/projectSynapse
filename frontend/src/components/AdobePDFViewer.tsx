@@ -12,16 +12,17 @@ const ADOBE_SDK_URL = 'https://acrobatservices.adobe.com/view-sdk/viewer.js';
 
 const AdobePDFViewer = ({ file, onTextSelection }: AdobePDFViewerProps) => {
   const viewerRef = useRef<HTMLDivElement>(null);
+  // Use a ref to hold the adobeDCView instance to prevent it from being re-created on every render.
+  const adobeDCViewRef = useRef<AdobeDCView | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Step 1: Load the Adobe SDK Script once.
+  // Effect to load the Adobe SDK script.
   useEffect(() => {
     if (window.AdobeDC) {
       setSdkReady(true);
       return;
     }
-
     const script = document.createElement('script');
     script.src = ADOBE_SDK_URL;
     script.async = true;
@@ -30,39 +31,33 @@ const AdobePDFViewer = ({ file, onTextSelection }: AdobePDFViewerProps) => {
         setSdkReady(true);
       });
     };
-    script.onerror = () => {
-      setError('Failed to load the Adobe SDK script. Check adblockers or network issues.');
-    };
+    script.onerror = () => setError('Failed to load Adobe SDK.');
     document.head.appendChild(script);
-
-    return () => {
-      document.head.removeChild(script);
-    };
+    return () => { document.head.removeChild(script); };
   }, []);
 
-  // Step 2: Initialize the viewer when the SDK is ready and a file is provided.
+  // Effect to initialize the viewer and load the PDF file.
   useEffect(() => {
-    if (!sdkReady || !file || !viewerRef.current) {
-      return;
-    }
-    
-    let isComponentMounted = true;
-    viewerRef.current.innerHTML = '';
+    if (!sdkReady || !file) return;
 
-    const initialize = async () => {
+    // A flag to prevent async operations after unmount
+    let isComponentMounted = true;
+    
+    // Function to initialize and render the PDF
+    const initializeAndPreview = async () => {
+      console.log('Attempting to initialize viewer...');
       try {
         const clientId = import.meta.env.VITE_ADOBE_CLIENT_ID;
         if (!clientId) throw new Error('VITE_ADOBE_CLIENT_ID is not configured.');
 
-        // This line is correct
-        const adobeDCView: AdobeDCView = new window.AdobeDC.View({
+        // Use the ref to store the instance
+        adobeDCViewRef.current = new window.AdobeDC.View({
           clientId,
           divId: ADOBE_VIEWER_ID,
         });
 
         const arrayBuffer = await file.arrayBuffer();
-
-        const previewFilePromise = adobeDCView.previewFile(
+        const previewFilePromise = adobeDCViewRef.current.previewFile(
           {
             content: { promise: Promise.resolve(arrayBuffer) },
             metaData: { fileName: file.name },
@@ -70,23 +65,24 @@ const AdobePDFViewer = ({ file, onTextSelection }: AdobePDFViewerProps) => {
           { embedMode: 'SIZED_CONTAINER', defaultViewMode: 'FIT_WIDTH' }
         );
 
+        // **CRITICAL FIX**: The event listener MUST be registered inside the promise's .then() block.
+        // This ensures the viewer is fully ready to accept callbacks for this specific document.
         previewFilePromise.then((adobeViewer) => {
-          if (!isComponentMounted || !window.AdobeDC) return;
+          if (!isComponentMounted || !adobeDCViewRef.current) return;
 
-          // ✅ FIX: Changed AdobeDC.Enum to AdobeDC.View.Enum
-          adobeDCView.registerCallback(
+          console.log('✅ PDF Preview is ready. Registering event listener...');
+          
+          adobeDCViewRef.current.registerCallback(
             window.AdobeDC.View.Enum.CallbackType.EVENT_LISTENER,
             async (event: any) => {
-              // ✅ FIX: Changed AdobeDC.Enum to AdobeDC.View.Enum
               if (event.type === window.AdobeDC.View.Enum.Events.PREVIEW_SELECTION_END) {
-                console.log('✅ PREVIEW_SELECTION_END event fired! Getting content...');
+                console.log('✅ PREVIEW_SELECTION_END event fired!');
                 try {
                   const apis = await adobeViewer.getAPIs();
                   const result = await apis.getSelectedContent();
                   const selectedText = result.data.trim();
                   
                   if (selectedText) {
-                    console.log(`✅ Text selected: "${selectedText}"`);
                     onTextSelection(selectedText);
                   }
                 } catch (e) {
@@ -96,22 +92,19 @@ const AdobePDFViewer = ({ file, onTextSelection }: AdobePDFViewerProps) => {
             },
             {
               enableFilePreviewEvents: true,
-              // ✅ FIX: Changed AdobeDC.Enum to AdobeDC.View.Enum
               listenOn: [window.AdobeDC.View.Enum.Events.PREVIEW_SELECTION_END],
             }
           );
         });
 
       } catch (err: any) {
-        if (isComponentMounted) {
-          setError(err.message);
-        }
+        if (isComponentMounted) setError(err.message);
       }
     };
-    initialize();
-    return () => {
-      isComponentMounted = false;
-    };
+
+    initializeAndPreview();
+    
+    return () => { isComponentMounted = false; };
   }, [sdkReady, file, onTextSelection]);
 
   if (error) {
@@ -120,7 +113,7 @@ const AdobePDFViewer = ({ file, onTextSelection }: AdobePDFViewerProps) => {
 
   return (
     <div id={ADOBE_VIEWER_ID} ref={viewerRef} className="w-full h-full">
-      {!sdkReady && <div className="p-4 flex items-center justify-center h-full">Loading Adobe Viewer...</div>}
+      {!file && <div className="p-4 flex items-center justify-center h-full">Please upload a PDF to begin.</div>}
     </div>
   );
 };
