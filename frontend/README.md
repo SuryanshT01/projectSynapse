@@ -75,16 +75,56 @@ If you prefer to set up manually:
 ### File Structure
 
 ```
-src/
-├── components/
-│   ├── AdobePDFViewer.tsx    # Adobe PDF viewer component
-│   ├── PDFViewer.tsx         # PDF viewer wrapper
-│   ├── HomePage.tsx          # Home page with upload options
-│   └── ...
-├── pages/
-│   ├── ReaderView.tsx        # Main reader view
-│   └── ...
-└── ...
+frontend/
+├── .env
+├── README.md
+├── bun.lockb
+├── components.json
+├── dist/
+├── eslint.config.js
+├── index.html
+├── node_modules/
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── public/
+│   ├── placeholder.svg
+│   └── robots.txt
+├── src/
+│   ├── App.css
+│   ├── App.tsx
+│   ├── components/
+│   │   ├── AdobePDFViewer.tsx
+│   │   ├── AdobeTest.tsx
+│   │   ├── HomePage.tsx
+│   │   ├── LibrarySidebar.tsx
+│   │   ├── ModalPrompt.tsx
+│   │   ├── PDFViewer.tsx
+│   │   ├── RightSidebar.tsx
+│   │   ├── TextSelectionSidebar.tsx
+│   │   └── ui/
+│   ├── hooks/
+│   │   ├── use-mobile.tsx
+│   │   ├── use-toast.ts
+│   │   └── useAdobeViewSDK.ts
+│   ├── index.css
+│   ├── lib/
+│   │   └── utils.ts
+│   ├── main.tsx
+│   ├── pages/
+│   │   ├── HistoryPage.tsx
+│   │   ├── Index.tsx
+│   │   ├── NotFound.tsx
+│   │   └── ReaderView.tsx
+│   ├── types/
+│   │   ├── adobe.d.ts
+│   │   └── analysis.ts
+│   └── vite-env.d.ts
+├── tailwind.config.ts
+├── tsconfig.app.json
+├── tsconfig.json
+├── tsconfig.node.json
+└── vite.config.ts
 ```
 
 ### Troubleshooting
