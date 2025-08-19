@@ -27,6 +27,10 @@ const ReaderView = () => {
   const [isLoadingPodcast, setIsLoadingPodcast] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // New states for handling PDF and section clicks
+  const [targetPage, setTargetPage] = useState<number | null>(null);
+  const [currentDocName, setCurrentDocName] = useState<string>('');
+
   useEffect(() => {
     if (location.state?.uploadedFile) {
       setUploadedFile(location.state.uploadedFile);
@@ -40,12 +44,12 @@ const ReaderView = () => {
     setInsights(null);
     setPodcastUrl(null);
     setError(null);
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
     try {
       // Step 1: Fetch Related Sections
       setIsLoadingRelated(true);
-      const sectionsResponse = await fetch(`${apiUrl}/related-sections`, {
+      const sectionsResponse = await fetch(`${apiUrl}/api/related-sections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query_text: text }),
@@ -59,7 +63,7 @@ const ReaderView = () => {
 
       // Step 2: Fetch Insights (depends on related sections)
       setIsLoadingInsights(true);
-      const insightsResponse = await fetch(`${apiUrl}/insights`, {
+      const insightsResponse = await fetch(`${apiUrl}/api/insights`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query_text: text, related_snippets: relatedSnippets }),
@@ -71,7 +75,7 @@ const ReaderView = () => {
 
       // Step 3: Fetch Podcast (also depends on related sections)
       setIsLoadingPodcast(true);
-      const podcastResponse = await fetch(`${apiUrl}/podcast`, {
+      const podcastResponse = await fetch(`${apiUrl}/api/podcast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query_text: text, related_snippets: relatedSnippets }),
@@ -100,6 +104,27 @@ const ReaderView = () => {
     }
   }, [startAnalysisFlow]);
 
+  const handleSectionClick = useCallback(async (section: RelatedSection) => {
+    if (!section.pdf_available || !section.pdf_url) {
+      setError('PDF not available for this section.');
+      return;
+    }
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    try {
+      // Fetch the PDF from backend
+      const response = await fetch(`${apiUrl}${section.pdf_url}`);
+      if (!response.ok) throw new Error('Failed to fetch PDF');
+      const blob = await response.blob();
+      const newFile = new File([blob], section.doc_name, { type: 'application/pdf' });
+      setUploadedFile(newFile);
+      setCurrentDocName(section.doc_name);
+      setTargetPage(section.page);
+      setIsTextSidebarOpen(false); // Optionally close sidebar
+    } catch (err: any) {
+      setError(err.message || 'Failed to load PDF');
+    }
+  }, []);
+
   // If no file is uploaded, redirect back to home
   if (!uploadedFile) {
     return (
@@ -123,6 +148,8 @@ const ReaderView = () => {
         <PDFViewer 
           uploadedFile={uploadedFile}
           onTextSelection={handleTextSelection}
+          targetPage={targetPage}
+          key={currentDocName}
         />
       </div>
       
@@ -132,7 +159,6 @@ const ReaderView = () => {
         isOpen={isTextSidebarOpen}
         onClose={() => setIsTextSidebarOpen(false)}
         selectedText={selectedText}
-        // Pass all the new data and states to the sidebar
         relatedSections={relatedSections}
         insights={insights}
         podcastUrl={podcastUrl}
@@ -140,6 +166,7 @@ const ReaderView = () => {
         isLoadingInsights={isLoadingInsights}
         isLoadingPodcast={isLoadingPodcast}
         error={error}
+        onSectionClick={handleSectionClick}
       />
     </div>
   );

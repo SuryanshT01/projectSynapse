@@ -5,12 +5,13 @@ import type { AdobeDCView } from '@/types/adobe';
 interface AdobePDFViewerProps {
   file: File | null;
   onTextSelection: (text: string) => void;
+  targetPage?: number | null;
 }
 
 const ADOBE_VIEWER_ID = 'adobe-dc-view';
 const ADOBE_SDK_URL = 'https://acrobatservices.adobe.com/view-sdk/viewer.js';
 
-const AdobePDFViewer = ({ file, onTextSelection }: AdobePDFViewerProps) => {
+const AdobePDFViewer = ({ file, onTextSelection, targetPage }: AdobePDFViewerProps) => {
   const viewerRef = useRef<HTMLDivElement>(null);
   const adobeDCViewRef = useRef<AdobeDCView | null>(null);
   const apisRef = useRef<any>(null); // Store APIs reference
@@ -131,6 +132,13 @@ const AdobePDFViewer = ({ file, onTextSelection }: AdobePDFViewerProps) => {
       apisRef.current = null;
     };
   }, [sdkReady, file, onTextSelection]);
+
+  // Effect to navigate to the correct page when targetPage changes
+  useEffect(() => {
+    if (typeof targetPage === 'number' && apisRef.current) {
+      apisRef.current.gotoLocation({ pageNumber: targetPage });
+    }
+  }, [targetPage, apisRef]);
 
   if (error) {
     return (

@@ -16,6 +16,7 @@ interface TextSelectionSidebarProps {
   isLoadingInsights: boolean;
   isLoadingPodcast: boolean;
   error: string | null;
+  onSectionClick?: (section: RelatedSection) => void;
 }
 
 // A small component for loading states
@@ -30,7 +31,8 @@ const TextSelectionSidebar = ({
   isOpen, onClose, selectedText,
   relatedSections, insights, podcastUrl,
   isLoadingRelated, isLoadingInsights, isLoadingPodcast,
-  error
+  error,
+  onSectionClick
 }: TextSelectionSidebarProps) => {
   if (!isOpen) return null;
 
@@ -79,11 +81,15 @@ const TextSelectionSidebar = ({
                   {!isLoadingRelated && relatedSections.length === 0 && <p className="text-sm text-muted-foreground p-2">No related sections found.</p>}
                   <div className="space-y-3">
                     {relatedSections.map((section, index) => (
-                      <div key={index} className="bg-muted p-3 rounded-md text-sm">
+                      <button
+                        key={index}
+                        className="bg-muted p-3 rounded-md text-sm w-full text-left hover:bg-primary/10 transition cursor-pointer"
+                        onClick={() => onSectionClick && onSectionClick(section)}
+                      >
                         <p className="font-semibold text-foreground truncate" title={section.doc_name}>{section.doc_name}</p>
                         <p className="text-xs text-muted-foreground mb-1">Page {section.page} - {section.section_title}</p>
                         <p className="text-foreground/80 leading-relaxed">"{section.snippet}"</p>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </AccordionContent>
