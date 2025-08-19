@@ -84,75 +84,60 @@ Provide insights in this exact format:
 
 
 def generate_podcast_audio(query_text: str, related_snippets: List[str]) -> str:
-    """Generates a 2-speaker podcast audio file."""
-    
-    snippets_text = "\n\n".join(f"Snippet {i+1}:\n{s}" for i, s in enumerate(related_snippets))
-    
-    script_prompt = f"""
-You are a scriptwriter for a short, 2-minute educational podcast. Write an engaging, two-speaker script (Host and Expert) that discusses the topic "{query_text}".
-Use the information provided in the following snippets to form the basis of the conversation. The dialogue must sound natural and conversational.
-Structure the output with each line prefixed by the speaker, like 'Host: [dialogue]' or 'Expert: [dialoge]'.
-
-**Snippets to use:**
-{snippets_text}
-"""
-    
-    script = chat_with_llm(script_prompt)
-    if not script:
-        raise Exception("Failed to generate podcast script from LLM.")
-
-    lines = [line.strip() for line in script.split('\n') if line.strip()]
-    audio_segments = []
-    
-    for line in lines:
-        if line.startswith("Host:"):
-            text = line.replace("Host:", "").strip()
-            voice = "en-US-JennyNeural"
-        elif line.startswith("Expert:"):
-            text = line.replace("Expert:", "").strip()
-            voice = "en-US-GuyNeural"
-        else:
-            continue
-            
-        if not text:  # Skip empty lines
-            continue
-            
-        temp_filename = os.path.join(TEMP_AUDIO_DIR, f"{uuid.uuid4()}.mp3")
-        try:
-            generated_file = generate_audio(text, temp_filename, voice=voice)
-            
-            if generated_file and os.path.exists(generated_file):
-                audio_segments.append(AudioSegment.from_mp3(generated_file))
-                os.remove(generated_file)
-            else:
-                logger.warning(f"Failed to generate audio for text: {text[:50]}...")
-        except Exception as e:
-            logger.error(f"Error generating audio for text '{text[:50]}...': {e}")
-            continue
-
-    if not audio_segments:
-        raise Exception("Failed to synthesize any audio segments.")
-
-    final_podcast = sum(audio_segments)
-    
-    final_filename = os.path.join(TEMP_AUDIO_DIR, f"podcast_{uuid.uuid4()}.mp3")
-    final_podcast.export(final_filename, format="mp3")
-    
-    logger.info(f"Podcast generated successfully: {final_filename}")
-    return final_filename
-
-
-def _generate_podcast_script(query_text: str, related_snippets: List[str]) -> str:
     """
-    Generate a conversational podcast script using LLM.
+    Generate a single-narrator podcast audio file.
+    Simplified version for reliable hackathon demo.
     
     Args:
-        query_text (str): The original query
-        related_snippets (List[str]): Related content snippets
+        query_text (str): The original query text
+        related_snippets (List[str]): List of related content snippets
         
     Returns:
-        str: Generated podcast script
+        str: Path to the generated audio file
+        
+    Raises:
+        Exception: If podcast generation fails
     """
+    logger.info(f"Starting podcast generation for query: '{query_text[:50]}...'")
+    
+    try:
+        # Step 1: Generate a conversational script
+        script = _generate_podcast_script(query_text, related_snippets)
+        
+        if not script:
+            raise Exception("Failed to generate podcast script from LLM.")
+        
+        logger.info(f"Generated script ({len(script)} chars)")
+        
+        # Step 2: Create output directory
+        temp_dir = _ensure_temp_audio_dir()
+        final_filename = os.path.join(temp_dir, f"podcast_{uuid.uuid4()}.mp3")
+        
+        # Step 3: Generate audio with a pleasant voice
+        voice = "nova"  # Female voice, good for narration
+        
+        logger.info(f"Generating audio with voice: {voice}")
+        
+        # Generate the audio file
+        generated_file = generate_audio(script, final_filename, voice=voice)
+        
+        if not generated_file or not os.path.exists(generated_file):
+            raise Exception("Failed to generate audio file")
+        
+        # Check file size
+        file_size = os.path.getsize(generated_file)
+        if file_size < 1000:  # Less than 1KB indicates a problem
+            raise Exception(f"Generated audio file is too small ({file_size} bytes)")
+        
+        logger.info(f"Podcast generated successfully: {generated_file} ({file_size} bytes)")
+        return generated_file
+        
+    except Exception as e:
+        logger.error(f"Podcast generation failed: {e}", exc_info=True)
+        raise Exception(f"Podcast generation failed: {str(e)}")
+
+def _generate_podcast_script(query_text: str, related_snippets: List[str]) -> str:
+    """Generate a conversational podcast script using LLM."""
     logger.info("Generating podcast script using LLM...")
     
     # Prepare context from related snippets
@@ -161,38 +146,31 @@ def _generate_podcast_script(query_text: str, related_snippets: List[str]) -> st
         context_text = "\n\n".join([f"Source {i+1}: {snippet}" for i, snippet in enumerate(related_snippets[:5])])
     
     # Create podcast generation prompt
-    prompt = f"""You are an AI assistant tasked with creating an engaging, conversational podcast script based on the provided query and related content sources.
+    prompt = f"""Create an engaging, conversational podcast script about "{query_text}".
 
-QUERY/TOPIC: "{query_text}"
-
-RELATED CONTENT SOURCES:
+CONTEXT FROM DOCUMENTS:
 {context_text}
 
-Please create a natural, conversational podcast script that:
+INSTRUCTIONS:
+Write a natural, friendly podcast script as if you're explaining this topic to a friend. The script should:
 
-1. **Introduction** (1-2 sentences): Start with a friendly greeting and introduce the topic
-2. **Main Content** (3-4 paragraphs): 
-   - Explain the main topic in an engaging, conversational tone
-   - Incorporate insights from the related sources naturally
-   - Present information as if you're having a friendly conversation with the listener
-   - Include interesting details, examples, or connections between ideas
-3. **Key Takeaways** (1-2 sentences): Summarize the most important points
-4. **Conclusion** (1-2 sentences): Wrap up with encouraging or thought-provoking closing remarks
+1. Start with a warm greeting and introduce the topic
+2. Explain the main concept in simple, engaging terms  
+3. Include interesting details and examples from the context
+4. Make connections between different ideas
+5. End with key takeaways and a friendly closing
 
-REQUIREMENTS:
-- Write in first person, as if you're speaking directly to the listener
-- Use a warm, conversational tone (like you're talking to a friend)
-- Keep sentences flowing naturally for speech
-- Avoid bullet points, lists, or formal structure
-- Total length: 300-600 words (about 2-4 minutes when spoken)
-- Make it engaging and easy to listen to
-
-Do not include speaker labels, timestamps, or any formatting. Just provide the natural flowing script text that will be converted to speech.
+STYLE GUIDELINES:
+- Write in first person ("I want to talk to you about...")
+- Use conversational language, not formal academic tone
+- Include natural transitions ("So here's what's interesting...")
+- Keep it engaging and easy to follow
+- Target length: 2-3 minutes when spoken (about 300-500 words)
+- No special formatting, just natural flowing text
 
 Script:"""
 
     try:
-        # Use the existing LLM chat function
         script = chat_with_llm(prompt)
         
         if not script:
@@ -200,71 +178,63 @@ Script:"""
         
         # Clean up the script
         script = script.strip()
-        
-        # Remove any unwanted formatting that might have slipped through
         script = script.replace("**", "").replace("##", "").replace("* ", "")
         
-        # Ensure it's not too short or too long
-        if len(script) < 200:
-            logger.warning(f"Generated script is quite short ({len(script)} chars)")
-        elif len(script) > 4000:
-            logger.warning(f"Generated script is quite long ({len(script)} chars), may need chunking")
+        # Ensure reasonable length
+        if len(script) < 100:
+            logger.warning(f"Generated script is very short ({len(script)} chars)")
+            script = _get_fallback_script(query_text)
+        elif len(script) > 2000:
+            logger.warning(f"Generated script is quite long ({len(script)} chars), truncating")
+            # Truncate but try to end at a sentence
+            truncated = script[:1800]
+            last_period = truncated.rfind('.')
+            if last_period > 1500:
+                script = truncated[:last_period + 1]
+            else:
+                script = truncated
         
+        logger.info(f"Final script length: {len(script)} characters")
         return script
         
     except Exception as e:
         logger.error(f"Failed to generate podcast script: {e}")
-        # Fallback script
-        fallback_script = f"""
-        Hello there! Today we're exploring an interesting topic about {query_text}.
+        return _get_fallback_script(query_text)
 
-        {query_text} is a fascinating subject that connects to many different areas of knowledge. 
-        From what I've gathered from various sources, there are several key points worth discussing.
+def _get_fallback_script(query_text: str) -> str:
+    """Get a fallback script when LLM generation fails."""
+    return f"""
+Hello there! Today I want to talk to you about {query_text}.
 
-        The main thing to understand is how this topic relates to your interests and daily life. 
-        It's one of those subjects where the more you learn, the more connections you start to see 
-        with other areas you might already know about.
+This is actually a really interesting topic that has many practical applications. 
+From the research I've gathered, it's clear that understanding {query_text} can 
+provide valuable insights for both professionals and everyday problem-solving.
 
-        What makes this particularly interesting is how different perspectives can shed new light 
-        on the same information. Each source adds another layer to our understanding.
+What makes this topic particularly fascinating is how it connects to broader themes 
+and concepts that we encounter in various contexts. The key is to approach it with 
+curiosity and an open mind.
 
-        The key takeaway here is that knowledge builds upon itself, and exploring topics like this 
-        helps us develop a more comprehensive understanding of the world around us.
+There are several important aspects to consider when thinking about {query_text}. 
+Each perspective adds another layer to our understanding and helps us see the bigger picture.
 
-        Thanks for listening, and I hope this gave you some useful insights to think about!
-        """
-        
-        return fallback_script.strip()
+I hope this overview has been helpful and gives you a starting point for further 
+exploration. Thanks for listening, and remember to keep learning!
+""".strip()
 
 def _ensure_temp_audio_dir() -> str:
-    """
-    Ensure the temporary audio directory exists.
-    
-    Returns:
-        str: Path to the temporary audio directory
-    """
-    # Get temp directory from environment or use default
+    """Ensure the temporary audio directory exists."""
     temp_dir = os.getenv("TEMP_AUDIO_DIR", "./data/temp_audio")
     
-    # If relative path, make it relative to the project root
     if not os.path.isabs(temp_dir):
-        # Get the project root (assuming this file is in backend/app/core/)
         current_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
         temp_dir = os.path.join(project_root, temp_dir)
     
-    # Create directory if it doesn't exist
     Path(temp_dir).mkdir(parents=True, exist_ok=True)
-    
     return temp_dir
 
 def cleanup_old_audio_files(max_age_hours: int = 24):
-    """
-    Clean up old temporary audio files.
-    
-    Args:
-        max_age_hours (int): Maximum age of files to keep in hours
-    """
+    """Clean up old temporary audio files."""
     try:
         temp_dir = _ensure_temp_audio_dir()
         current_time = os.time()
@@ -286,27 +256,17 @@ def cleanup_old_audio_files(max_age_hours: int = 24):
     except Exception as e:
         logger.error(f"Failed to cleanup old audio files: {e}")
 
-# Additional utility functions that might be used elsewhere in the project
-
 def test_tts_setup() -> bool:
-    """
-    Test if TTS is properly configured and working.
-    
-    Returns:
-        bool: True if TTS is working, False otherwise
-    """
+    """Test if TTS is properly configured and working."""
     try:
         temp_dir = _ensure_temp_audio_dir()
         test_file = os.path.join(temp_dir, "tts_test.mp3")
         
-        # Try to generate a simple test audio
         test_text = "This is a test of the text to speech system."
         result = generate_audio(test_text, test_file)
         
-        # Check if file was created
         success = os.path.exists(result) and os.path.getsize(result) > 100
         
-        # Clean up test file
         if os.path.exists(result):
             os.remove(result)
         
@@ -317,13 +277,8 @@ def test_tts_setup() -> bool:
         return False
 
 def get_tts_provider_info() -> dict:
-    """
-    Get information about the current TTS provider configuration.
-    
-    Returns:
-        dict: Information about TTS provider setup
-    """
-    provider = os.getenv("TTS_PROVIDER", "local").lower()
+    """Get information about the current TTS provider configuration."""
+    provider = os.getenv("TTS_PROVIDER", "azure").lower()
     
     info = {
         "provider": provider,
@@ -339,46 +294,8 @@ def get_tts_provider_info() -> dict:
         info["details"] = {
             "endpoint": os.getenv("AZURE_TTS_ENDPOINT", "Not set"),
             "deployment": os.getenv("AZURE_TTS_DEPLOYMENT", "tts"),
-            "voice": os.getenv("AZURE_TTS_VOICE", "alloy"),
+            "voice": os.getenv("AZURE_TTS_VOICE", "nova"),
             "api_version": os.getenv("AZURE_TTS_API_VERSION", "2024-08-01-preview")
-        }
-    elif provider == "gcp":
-        info["configured"] = bool(
-            os.getenv("GOOGLE_API_KEY") or 
-            os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        )
-        info["details"] = {
-            "voice": os.getenv("GCP_TTS_VOICE", "en-US-Neural2-F"),
-            "language": os.getenv("GCP_TTS_LANGUAGE", "en-US")
-        }
-    elif provider == "local":
-        info["configured"] = True  # Assume local is always available
-        info["details"] = {
-            "voice": os.getenv("ESPEAK_VOICE", "en"),
-            "speed": os.getenv("ESPEAK_SPEED", "150")
         }
     
     return info
-
-# Schedule periodic cleanup (this would be called from a background task)
-def schedule_audio_cleanup():
-    """
-    Schedule periodic cleanup of old audio files.
-    This should be called from the main application startup.
-    """
-    import threading
-    import time
-    
-    def cleanup_worker():
-        while True:
-            try:
-                cleanup_old_audio_files()
-                # Sleep for 6 hours
-                time.sleep(6 * 3600)
-            except Exception as e:
-                logger.error(f"Cleanup worker error: {e}")
-                time.sleep(3600)  # Sleep for 1 hour on error
-    
-    cleanup_thread = threading.Thread(target=cleanup_worker, daemon=True)
-    cleanup_thread.start()
-    logger.info("Audio cleanup worker started")
