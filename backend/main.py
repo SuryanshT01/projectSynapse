@@ -2,11 +2,15 @@
 import logging
 import os
 from fastapi import FastAPI
+from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.routes import router as api_router
 from backend.app.core.search import load_search_engine
+
+load_dotenv()
+
 
 # Configure logging
 logging.basicConfig(
