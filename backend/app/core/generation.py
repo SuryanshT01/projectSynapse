@@ -31,22 +31,42 @@ def generate_insights(query_text: str, related_snippets: List[str]) -> Dict[str,
     snippets_text = "\n\n".join(f"Snippet {i+1}:\n{s}" for i, s in enumerate(related_snippets))
     
     prompt = f"""
-You are a world-class research assistant. Your task is to analyze a user's selected text and several related text snippets from their document library and provide deep insights.
+You are an expert document analyst with expertise across all domains. Generate actionable insights from the user's selected text and related content from different documents along with their context. Focus on what's most valuable for someone working with this specific information.
 
-**User's Selected Text:**
-"{query_text}"
+**SELECTED TEXT:** {query_text}
 
-**Related Snippets from Documents:**
+**RELATED CONTENT:**
 {snippets_text}
 
 ---
 
-Based **ONLY** on the information provided above, please generate the following insights. If an insight cannot be derived from the text, state that clearly. Structure your response in a clear, well-formatted way.
+Provide insights in this exact format:
 
-1.  **Contradictions / Counterpoints:** Identify any direct contradictions or opposing viewpoints between the user's text and the snippets. Quote the relevant parts.
-2.  **Key Takeaways:** Synthesize the main ideas into 3-4 important, concise takeaways.
-3.  **Illustrative Examples:** Find the best concrete example or case study that illustrates the main concept.
-"""
+## 🎯 **QUICK INSIGHTS**
+• [Key Insights Short, crisp and consize answer to the selected text, using all the information along with your own knowledge.]
+
+### ⚡ **Key Points**
+• [Most important finding from the content]
+• [Critical detail that stands out from the selected text and the content from different documents]
+• [Unexpected or noteworthy information]
+
+### ⚠️ **Critical Notes**
+• [Any contradictions, gaps, or limitations in the information from the selected text and the information in the related content.]
+• [What questions remain unanswered]
+• [Potential risks or considerations]
+
+### 💡 **Actionable Takeaways**
+• [Specific action someone could take based on this information]
+• [What to research further or investigate]
+• [How to apply or use this knowledge]
+
+### � **Connections**
+• [How this relates to other parts of the document]
+• [Cross-references or related concepts mentioned]
+• [Broader implications or applications]
+
+---
+**Analysis based on:** {len(related_snippets)} related sections from the document"""
     
     logger.info(f"Generating insights for query: '{query_text[:50]}...'")
     response_text = chat_with_llm(prompt)
