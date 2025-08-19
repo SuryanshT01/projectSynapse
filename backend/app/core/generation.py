@@ -3,6 +3,9 @@
 import logging
 import os
 import uuid
+import asyncio
+import tempfile
+from pathlib import Path
 from typing import List, Dict, Any
 
 from pydub import AudioSegment
@@ -111,12 +114,21 @@ Structure the output with each line prefixed by the speaker, like 'Host: [dialog
         else:
             continue
             
+        if not text:  # Skip empty lines
+            continue
+            
         temp_filename = os.path.join(TEMP_AUDIO_DIR, f"{uuid.uuid4()}.mp3")
-        success = generate_audio(text, temp_filename, voice_name=voice)
-        
-        if success:
-            audio_segments.append(AudioSegment.from_mp3(temp_filename))
-            os.remove(temp_filename)
+        try:
+            generated_file = generate_audio(text, temp_filename, voice=voice)
+            
+            if generated_file and os.path.exists(generated_file):
+                audio_segments.append(AudioSegment.from_mp3(generated_file))
+                os.remove(generated_file)
+            else:
+                logger.warning(f"Failed to generate audio for text: {text[:50]}...")
+        except Exception as e:
+            logger.error(f"Error generating audio for text '{text[:50]}...': {e}")
+            continue
 
     if not audio_segments:
         raise Exception("Failed to synthesize any audio segments.")
@@ -128,3 +140,245 @@ Structure the output with each line prefixed by the speaker, like 'Host: [dialog
     
     logger.info(f"Podcast generated successfully: {final_filename}")
     return final_filename
+
+
+def _generate_podcast_script(query_text: str, related_snippets: List[str]) -> str:
+    """
+    Generate a conversational podcast script using LLM.
+    
+    Args:
+        query_text (str): The original query
+        related_snippets (List[str]): Related content snippets
+        
+    Returns:
+        str: Generated podcast script
+    """
+    logger.info("Generating podcast script using LLM...")
+    
+    # Prepare context from related snippets
+    context_text = ""
+    if related_snippets:
+        context_text = "\n\n".join([f"Source {i+1}: {snippet}" for i, snippet in enumerate(related_snippets[:5])])
+    
+    # Create podcast generation prompt
+    prompt = f"""You are an AI assistant tasked with creating an engaging, conversational podcast script based on the provided query and related content sources.
+
+QUERY/TOPIC: "{query_text}"
+
+RELATED CONTENT SOURCES:
+{context_text}
+
+Please create a natural, conversational podcast script that:
+
+1. **Introduction** (1-2 sentences): Start with a friendly greeting and introduce the topic
+2. **Main Content** (3-4 paragraphs): 
+   - Explain the main topic in an engaging, conversational tone
+   - Incorporate insights from the related sources naturally
+   - Present information as if you're having a friendly conversation with the listener
+   - Include interesting details, examples, or connections between ideas
+3. **Key Takeaways** (1-2 sentences): Summarize the most important points
+4. **Conclusion** (1-2 sentences): Wrap up with encouraging or thought-provoking closing remarks
+
+REQUIREMENTS:
+- Write in first person, as if you're speaking directly to the listener
+- Use a warm, conversational tone (like you're talking to a friend)
+- Keep sentences flowing naturally for speech
+- Avoid bullet points, lists, or formal structure
+- Total length: 300-600 words (about 2-4 minutes when spoken)
+- Make it engaging and easy to listen to
+
+Do not include speaker labels, timestamps, or any formatting. Just provide the natural flowing script text that will be converted to speech.
+
+Script:"""
+
+    try:
+        # Use the existing LLM chat function
+        script = chat_with_llm(prompt)
+        
+        if not script:
+            raise Exception("LLM returned empty response")
+        
+        # Clean up the script
+        script = script.strip()
+        
+        # Remove any unwanted formatting that might have slipped through
+        script = script.replace("**", "").replace("##", "").replace("* ", "")
+        
+        # Ensure it's not too short or too long
+        if len(script) < 200:
+            logger.warning(f"Generated script is quite short ({len(script)} chars)")
+        elif len(script) > 4000:
+            logger.warning(f"Generated script is quite long ({len(script)} chars), may need chunking")
+        
+        return script
+        
+    except Exception as e:
+        logger.error(f"Failed to generate podcast script: {e}")
+        # Fallback script
+        fallback_script = f"""
+        Hello there! Today we're exploring an interesting topic about {query_text}.
+
+        {query_text} is a fascinating subject that connects to many different areas of knowledge. 
+        From what I've gathered from various sources, there are several key points worth discussing.
+
+        The main thing to understand is how this topic relates to your interests and daily life. 
+        It's one of those subjects where the more you learn, the more connections you start to see 
+        with other areas you might already know about.
+
+        What makes this particularly interesting is how different perspectives can shed new light 
+        on the same information. Each source adds another layer to our understanding.
+
+        The key takeaway here is that knowledge builds upon itself, and exploring topics like this 
+        helps us develop a more comprehensive understanding of the world around us.
+
+        Thanks for listening, and I hope this gave you some useful insights to think about!
+        """
+        
+        return fallback_script.strip()
+
+def _ensure_temp_audio_dir() -> str:
+    """
+    Ensure the temporary audio directory exists.
+    
+    Returns:
+        str: Path to the temporary audio directory
+    """
+    # Get temp directory from environment or use default
+    temp_dir = os.getenv("TEMP_AUDIO_DIR", "./data/temp_audio")
+    
+    # If relative path, make it relative to the project root
+    if not os.path.isabs(temp_dir):
+        # Get the project root (assuming this file is in backend/app/core/)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+        temp_dir = os.path.join(project_root, temp_dir)
+    
+    # Create directory if it doesn't exist
+    Path(temp_dir).mkdir(parents=True, exist_ok=True)
+    
+    return temp_dir
+
+def cleanup_old_audio_files(max_age_hours: int = 24):
+    """
+    Clean up old temporary audio files.
+    
+    Args:
+        max_age_hours (int): Maximum age of files to keep in hours
+    """
+    try:
+        temp_dir = _ensure_temp_audio_dir()
+        current_time = os.time()
+        max_age_seconds = max_age_hours * 3600
+        
+        cleaned_count = 0
+        for file_path in Path(temp_dir).glob("podcast_*.mp3"):
+            try:
+                file_age = current_time - file_path.stat().st_mtime
+                if file_age > max_age_seconds:
+                    file_path.unlink()
+                    cleaned_count += 1
+            except Exception as e:
+                logger.warning(f"Failed to clean up file {file_path}: {e}")
+        
+        if cleaned_count > 0:
+            logger.info(f"Cleaned up {cleaned_count} old audio files")
+            
+    except Exception as e:
+        logger.error(f"Failed to cleanup old audio files: {e}")
+
+# Additional utility functions that might be used elsewhere in the project
+
+def test_tts_setup() -> bool:
+    """
+    Test if TTS is properly configured and working.
+    
+    Returns:
+        bool: True if TTS is working, False otherwise
+    """
+    try:
+        temp_dir = _ensure_temp_audio_dir()
+        test_file = os.path.join(temp_dir, "tts_test.mp3")
+        
+        # Try to generate a simple test audio
+        test_text = "This is a test of the text to speech system."
+        result = generate_audio(test_text, test_file)
+        
+        # Check if file was created
+        success = os.path.exists(result) and os.path.getsize(result) > 100
+        
+        # Clean up test file
+        if os.path.exists(result):
+            os.remove(result)
+        
+        return success
+        
+    except Exception as e:
+        logger.error(f"TTS test failed: {e}")
+        return False
+
+def get_tts_provider_info() -> dict:
+    """
+    Get information about the current TTS provider configuration.
+    
+    Returns:
+        dict: Information about TTS provider setup
+    """
+    provider = os.getenv("TTS_PROVIDER", "local").lower()
+    
+    info = {
+        "provider": provider,
+        "configured": False,
+        "details": {}
+    }
+    
+    if provider == "azure":
+        info["configured"] = bool(
+            os.getenv("AZURE_TTS_KEY") and 
+            os.getenv("AZURE_TTS_ENDPOINT")
+        )
+        info["details"] = {
+            "endpoint": os.getenv("AZURE_TTS_ENDPOINT", "Not set"),
+            "deployment": os.getenv("AZURE_TTS_DEPLOYMENT", "tts"),
+            "voice": os.getenv("AZURE_TTS_VOICE", "alloy"),
+            "api_version": os.getenv("AZURE_TTS_API_VERSION", "2024-08-01-preview")
+        }
+    elif provider == "gcp":
+        info["configured"] = bool(
+            os.getenv("GOOGLE_API_KEY") or 
+            os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        )
+        info["details"] = {
+            "voice": os.getenv("GCP_TTS_VOICE", "en-US-Neural2-F"),
+            "language": os.getenv("GCP_TTS_LANGUAGE", "en-US")
+        }
+    elif provider == "local":
+        info["configured"] = True  # Assume local is always available
+        info["details"] = {
+            "voice": os.getenv("ESPEAK_VOICE", "en"),
+            "speed": os.getenv("ESPEAK_SPEED", "150")
+        }
+    
+    return info
+
+# Schedule periodic cleanup (this would be called from a background task)
+def schedule_audio_cleanup():
+    """
+    Schedule periodic cleanup of old audio files.
+    This should be called from the main application startup.
+    """
+    import threading
+    import time
+    
+    def cleanup_worker():
+        while True:
+            try:
+                cleanup_old_audio_files()
+                # Sleep for 6 hours
+                time.sleep(6 * 3600)
+            except Exception as e:
+                logger.error(f"Cleanup worker error: {e}")
+                time.sleep(3600)  # Sleep for 1 hour on error
+    
+    cleanup_thread = threading.Thread(target=cleanup_worker, daemon=True)
+    cleanup_thread.start()
+    logger.info("Audio cleanup worker started")

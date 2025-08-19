@@ -2,14 +2,18 @@
 import os
 import shutil
 import logging
+import asyncio
 from typing import List, Optional
-from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException
+from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException, Request
 from fastapi.responses import FileResponse
+from fastapi.concurrency import run_in_threadpool
+import anyio
 from pydantic import BaseModel
 from ..core.config import get_settings
 from ..core.processing import process_and_index_pdf
 from ..core.search import search_with_pdf_links
 from ..core.generation import generate_insights, generate_podcast_audio
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -176,29 +180,327 @@ async def get_insights(request: InsightsRequest):
         logger.error(f"Error in /insights: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to generate insights")
 
-@router.post("/podcast")
-async def get_podcast(request: InsightsRequest):
-    """Powers 'Podcast Mode' with enhanced context from hybrid search."""
+# Store active podcast generation tasks for cancellation
+active_podcast_tasks = {}
+
+async def _check_client_disconnected(request: Request) -> bool:
+    """
+    Check if the client has disconnected by trying to receive a message.
+    Returns True if client is disconnected, False otherwise.
+    """
     try:
-        audio_file_path = generate_podcast_audio(request.query_text, request.related_snippets)
+        message = await request.receive()
+        return message.get("type") == "http.disconnect"
+    except:
+        return False
+
+async def _generate_podcast_with_cancellation(
+    request: Request, 
+    query_text: str, 
+    related_snippets: List[str],
+    task_id: str
+) -> str:
+    """
+    Generate podcast audio with client disconnection detection.
+    
+    Args:
+        request: FastAPI request object
+        query_text: The query text
+        related_snippets: List of related content snippets
+        task_id: Unique task identifier
         
-        # Return the file as a streaming response and clean up after
-        def cleanup():
-            if os.path.exists(audio_file_path):
-                os.remove(audio_file_path)
+    Returns:
+        str: Path to the generated audio file
+        
+    Raises:
+        asyncio.CancelledError: If the task is cancelled
+        Exception: If generation fails
+    """
+    logger.info(f"Starting podcast generation task {task_id}")
+    
+    try:
+        # Use asyncio.create_task for better control
+        import asyncio
+        
+        # Task 1: Monitor client connection
+        async def monitor_client():
+            while True:
+                if await _check_client_disconnected(request):
+                    logger.info(f"Client disconnected for task {task_id}, cancelling")
+                    return "cancelled"
+                await asyncio.sleep(0.5)  # Check every 500ms
+        
+        # Task 2: Generate the actual podcast
+        async def generate_podcast():
+            try:
+                # Run the CPU-intensive podcast generation in a thread pool
+                audio_path = await run_in_threadpool(
+                    generate_podcast_audio,
+                    query_text,
+                    related_snippets
+                )
+                return audio_path
+            except Exception as e:
+                logger.error(f"Podcast generation failed for task {task_id}: {e}")
+                raise
+        
+        # Create tasks
+        monitor_task = asyncio.create_task(monitor_client())
+        generation_task = asyncio.create_task(generate_podcast())
+        
+        try:
+            # Wait for either task to complete
+            done, pending = await asyncio.wait(
+                [monitor_task, generation_task],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            
+            # Cancel any remaining tasks
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+            
+            # Check results
+            for task in done:
+                if task == generation_task:
+                    audio_path = task.result()
+                    logger.info(f"Podcast generation completed successfully for task {task_id}")
+                    return audio_path
+                elif task == monitor_task:
+                    result = task.result()
+                    if result == "cancelled":
+                        logger.info(f"Client disconnected for task {task_id}")
+                        raise asyncio.CancelledError(f"Task {task_id} was cancelled due to client disconnect")
+            
+            # If we get here, something unexpected happened
+            raise Exception("Unexpected task completion state")
+            
+        except asyncio.CancelledError:
+            logger.info(f"Podcast generation was cancelled for task {task_id}")
+            raise
                 
-        background_tasks = BackgroundTasks()
-        background_tasks.add_task(cleanup)
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.error(f"Podcast generation error for task {task_id}: {e}")
+        raise
+    finally:
+        # Clean up the task from active tasks
+        active_podcast_tasks.pop(task_id, None)
+
+@router.post("/podcast")
+async def get_podcast(request: InsightsRequest, fastapi_request: Request):
+    """
+    Generate podcast audio with enhanced context from hybrid search.
+    Supports client disconnection detection and request cancellation.
+    """
+    import uuid
+    task_id = str(uuid.uuid4())[:8]
+    
+    try:
+        logger.info(f"Starting podcast generation for task {task_id}")
         
+        # Store the task for potential cancellation
+        active_podcast_tasks[task_id] = {"status": "running", "query": request.query_text[:50]}
+        
+        # Generate podcast with cancellation support
+        audio_file_path = await _generate_podcast_with_cancellation(
+            fastapi_request,
+            request.query_text,
+            request.related_snippets,
+            task_id
+        )
+        
+        if not audio_file_path or not os.path.exists(audio_file_path):
+            raise HTTPException(status_code=500, detail="Failed to generate audio file")
+        
+        # Set up background task to clean up the file after sending
+        background_tasks = BackgroundTasks()
+        
+        def cleanup_audio_file():
+            try:
+                if os.path.exists(audio_file_path):
+                    os.remove(audio_file_path)
+                    logger.info(f"Cleaned up audio file: {audio_file_path}")
+            except Exception as e:
+                logger.warning(f"Failed to cleanup audio file {audio_file_path}: {e}")
+        
+        background_tasks.add_task(cleanup_audio_file)
+        
+        # Return the audio file
         return FileResponse(
             path=audio_file_path,
             media_type='audio/mpeg',
-            filename=os.path.basename(audio_file_path),
+            filename=f"podcast_{task_id}.mp3",
             background=background_tasks
         )
+        
+    except asyncio.CancelledError:
+        logger.info(f"Podcast generation cancelled for task {task_id}")
+        raise HTTPException(status_code=499, detail="Request cancelled by client")
+        
     except Exception as e:
-        logger.error(f"Error in /podcast: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to generate podcast")
+        logger.error(f"Error in /podcast for task {task_id}: {e}", exc_info=True)
+        active_podcast_tasks.pop(task_id, None)
+        
+        # Provide more specific error messages
+        if "TTS" in str(e):
+            raise HTTPException(
+                status_code=503, 
+                detail="Text-to-speech service is currently unavailable. Please check TTS configuration."
+            )
+        elif "script" in str(e).lower():
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate podcast script. Please try again."
+            )
+        else:
+            raise HTTPException(status_code=500, detail="Failed to generate podcast")
+
+@router.get("/podcast/status/{task_id}")
+async def get_podcast_status(task_id: str):
+    """
+    Get the status of a podcast generation task.
+    
+    Args:
+        task_id: The task identifier
+        
+    Returns:
+        dict: Task status information
+    """
+    if task_id in active_podcast_tasks:
+        return {
+            "task_id": task_id,
+            "status": active_podcast_tasks[task_id]["status"],
+            "query": active_podcast_tasks[task_id]["query"]
+        }
+    else:
+        return {
+            "task_id": task_id,
+            "status": "completed_or_not_found"
+        }
+
+@router.delete("/podcast/{task_id}")
+async def cancel_podcast(task_id: str):
+    """
+    Cancel a running podcast generation task.
+    
+    Args:
+        task_id: The task identifier to cancel
+        
+    Returns:
+        dict: Cancellation status
+    """
+    if task_id in active_podcast_tasks:
+        active_podcast_tasks[task_id]["status"] = "cancelled"
+        logger.info(f"Marked task {task_id} for cancellation")
+        return {"message": f"Task {task_id} marked for cancellation", "status": "success"}
+    else:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+@router.get("/podcast/health")
+async def podcast_health_check():
+    """
+    Health check endpoint for podcast generation service.
+    
+    Returns:
+        dict: Health status and configuration info
+    """
+    from app.core.generation import test_tts_setup, get_tts_provider_info
+    
+    try:
+        # Test TTS setup
+        tts_working = await run_in_threadpool(test_tts_setup)
+        tts_info = get_tts_provider_info()
+        
+        active_tasks_count = len(active_podcast_tasks)
+        
+        return {
+            "status": "healthy" if tts_working else "degraded",
+            "tts_working": tts_working,
+            "tts_provider": tts_info,
+            "active_tasks": active_tasks_count,
+            "message": "Podcast service is operational" if tts_working else "TTS configuration issues detected"
+        }
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "message": "Podcast service is experiencing issues"
+        }
+
+# Additional utility endpoints
+
+@router.get("/podcast/active-tasks")
+async def get_active_podcast_tasks():
+    """
+    Get information about currently active podcast generation tasks.
+    Useful for monitoring and debugging.
+    
+    Returns:
+        dict: Information about active tasks
+    """
+    return {
+        "active_tasks": active_podcast_tasks,
+        "total_count": len(active_podcast_tasks)
+    }
+
+@router.post("/podcast/cleanup")
+async def cleanup_old_audio_files():
+    """
+    Manually trigger cleanup of old audio files.
+    
+    Returns:
+        dict: Cleanup results
+    """
+    try:
+        from app.core.generation import cleanup_old_audio_files
+        
+        await run_in_threadpool(cleanup_old_audio_files, max_age_hours=1)
+        
+        return {
+            "status": "success",
+            "message": "Audio file cleanup completed"
+        }
+        
+    except Exception as e:
+        logger.error(f"Manual cleanup failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {e}")
+
+# Startup event to initialize cleanup worker
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def podcast_lifespan(app):
+    """
+    Lifespan context manager for podcast-related services.
+    """
+    logger.info("Starting podcast services...")
+    
+    # Start background cleanup worker
+    from app.core.generation import schedule_audio_cleanup
+    try:
+        await run_in_threadpool(schedule_audio_cleanup)
+        logger.info("Audio cleanup worker started")
+    except Exception as e:
+        logger.warning(f"Failed to start cleanup worker: {e}")
+    
+    yield
+    
+    # Cleanup on shutdown
+    logger.info("Shutting down podcast services...")
+    
+    # Cancel any active tasks
+    for task_id in list(active_podcast_tasks.keys()):
+        active_podcast_tasks[task_id]["status"] = "cancelled"
+    
+    active_podcast_tasks.clear()
+    logger.info("Podcast services shutdown complete")
 
 @router.get("/search-stats")
 async def get_search_stats():
