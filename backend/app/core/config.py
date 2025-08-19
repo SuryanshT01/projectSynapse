@@ -39,9 +39,9 @@ class Settings(BaseSettings):
     AZURE_TTS_ENDPOINT: Optional[str] = None
     ADOBE_EMBED_API_KEY: Optional[str] = None
 
-    # pydantic-settings config: read backend/.env relative to project root
+    # pydantic-settings config: read .env from project root
     model_config = SettingsConfigDict(
-        env_file="backend/.env",
+        env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )

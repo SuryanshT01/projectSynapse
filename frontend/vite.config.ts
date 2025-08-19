@@ -16,4 +16,6 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Configure Vite to look for .env files in the project root (parent directory)
+  envDir: path.resolve(__dirname, "../"),
 }));
