@@ -1,11 +1,12 @@
-// src/pages/ReaderView.tsx
-import { useState, useEffect, useCallback } from 'react';
+// src/pages/ReaderView.tsx - Updated with request cancellation
+
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import LibrarySidebar from '@/components/LibrarySidebar';
 import PDFViewer from '@/components/PDFViewer';
 import RightSidebar from '@/components/RightSidebar';
 import TextSelectionSidebar from '@/components/TextSelectionSidebar';
-import { RelatedSection, Insights } from '@/types/analysis'; // <-- Import new types
+import { RelatedSection, Insights } from '@/types/analysis';
 
 const ReaderView = () => {
   const location = useLocation();
@@ -31,70 +32,171 @@ const ReaderView = () => {
   const [targetPage, setTargetPage] = useState<number | null>(null);
   const [currentDocName, setCurrentDocName] = useState<string>('');
 
+  // AbortController refs for cancelling requests
+  const sectionsAbortController = useRef<AbortController | null>(null);
+  const insightsAbortController = useRef<AbortController | null>(null);
+  const podcastAbortController = useRef<AbortController | null>(null);
+
   useEffect(() => {
     if (location.state?.uploadedFile) {
       setUploadedFile(location.state.uploadedFile);
     }
   }, [location.state]);
 
+  // Cleanup function to abort all active requests
+  const cancelAllRequests = useCallback(() => {
+    console.log('Cancelling all active requests...');
+    
+    if (sectionsAbortController.current) {
+      sectionsAbortController.current.abort();
+      sectionsAbortController.current = null;
+    }
+    
+    if (insightsAbortController.current) {
+      insightsAbortController.current.abort();
+      insightsAbortController.current = null;
+    }
+    
+    if (podcastAbortController.current) {
+      podcastAbortController.current.abort();
+      podcastAbortController.current = null;
+    }
+
+    // Reset loading states
+    setIsLoadingRelated(false);
+    setIsLoadingInsights(false);
+    setIsLoadingPodcast(false);
+  }, []);
+
   const startAnalysisFlow = useCallback(async (text: string) => {
+    // Cancel any existing requests first
+    cancelAllRequests();
+    
     // Reset all states for a new analysis
     setIsTextSidebarOpen(true);
     setRelatedSections([]);
     setInsights(null);
     setPodcastUrl(null);
     setError(null);
+    
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
     try {
       // Step 1: Fetch Related Sections
       setIsLoadingRelated(true);
+      
+      // Create new AbortController for sections request
+      const sectionsController = new AbortController();
+      sectionsAbortController.current = sectionsController;
+      
       const sectionsResponse = await fetch(`${apiUrl}/api/related-sections`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query_text: text }),
+        signal: sectionsController.signal,
       });
+
+      // Check if request was aborted
+      if (sectionsController.signal.aborted) {
+        console.log('Sections request was aborted');
+        return;
+      }
+      
       if (!sectionsResponse.ok) throw new Error('Failed to fetch related sections.');
+      
       const sections: RelatedSection[] = await sectionsResponse.json();
       setRelatedSections(sections);
       setIsLoadingRelated(false);
+      sectionsAbortController.current = null;
       
       const relatedSnippets = sections.map(s => s.snippet);
 
       // Step 2: Fetch Insights (depends on related sections)
       setIsLoadingInsights(true);
+      
+      // Create new AbortController for insights request
+      const insightsController = new AbortController();
+      insightsAbortController.current = insightsController;
+      
       const insightsResponse = await fetch(`${apiUrl}/api/insights`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query_text: text, related_snippets: relatedSnippets }),
+        signal: insightsController.signal,
       });
+
+      // Check if request was aborted
+      if (insightsController.signal.aborted) {
+        console.log('Insights request was aborted');
+        return;
+      }
+      
       if (!insightsResponse.ok) throw new Error('Failed to generate insights.');
+      
       const insightData: Insights = await insightsResponse.json();
       setInsights(insightData);
       setIsLoadingInsights(false);
+      insightsAbortController.current = null;
 
       // Step 3: Fetch Podcast (also depends on related sections)
       setIsLoadingPodcast(true);
+      
+      // Create new AbortController for podcast request
+      const podcastController = new AbortController();
+      podcastAbortController.current = podcastController;
+      
       const podcastResponse = await fetch(`${apiUrl}/api/podcast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query_text: text, related_snippets: relatedSnippets }),
+        signal: podcastController.signal,
       });
-      if (!podcastResponse.ok) throw new Error('Failed to generate podcast audio.');
+
+      // Check if request was aborted
+      if (podcastController.signal.aborted) {
+        console.log('Podcast request was aborted');
+        return;
+      }
+      
+      if (!podcastResponse.ok) {
+        // Handle specific error cases
+        if (podcastResponse.status === 499) {
+          console.log('Podcast request was cancelled by server');
+          return;
+        } else if (podcastResponse.status === 503) {
+          throw new Error('Text-to-speech service is currently unavailable. Please check configuration.');
+        } else {
+          throw new Error('Failed to generate podcast audio.');
+        }
+      }
+      
       const audioBlob = await podcastResponse.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       setPodcastUrl(audioUrl);
       setIsLoadingPodcast(false);
+      podcastAbortController.current = null;
 
     } catch (err: any) {
+      // Handle different types of errors
+      if (err.name === 'AbortError') {
+        console.log('Request was aborted:', err.message);
+        return; // Don't set error state for aborted requests
+      }
+      
       console.error("Analysis flow failed:", err);
       setError(err.message || 'An unknown error occurred during analysis.');
+      
       // Stop all loading indicators on error
       setIsLoadingRelated(false);
       setIsLoadingInsights(false);
       setIsLoadingPodcast(false);
+      
+      // Clear abort controllers
+      sectionsAbortController.current = null;
+      insightsAbortController.current = null;
+      podcastAbortController.current = null;
     }
-  }, []);
+  }, [cancelAllRequests]);
 
   const handleTextSelection = useCallback((text: string) => {
     // This is the trigger for the entire journey flow
@@ -109,11 +211,14 @@ const ReaderView = () => {
       setError('PDF not available for this section.');
       return;
     }
+    
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    
     try {
       // Fetch the PDF from backend
       const response = await fetch(`${apiUrl}${section.pdf_url}`);
       if (!response.ok) throw new Error('Failed to fetch PDF');
+      
       const blob = await response.blob();
       const newFile = new File([blob], section.doc_name, { type: 'application/pdf' });
       setUploadedFile(newFile);
@@ -124,6 +229,32 @@ const ReaderView = () => {
       setError(err.message || 'Failed to load PDF');
     }
   }, []);
+
+  // Handle sidebar close with request cancellation
+  const handleSidebarClose = useCallback(() => {
+    console.log('Sidebar closing, cancelling requests...');
+    cancelAllRequests();
+    setIsTextSidebarOpen(false);
+    
+    // Clean up any blob URLs to prevent memory leaks
+    if (podcastUrl && podcastUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(podcastUrl);
+      setPodcastUrl(null);
+    }
+  }, [cancelAllRequests, podcastUrl]);
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      console.log('ReaderView unmounting, cleaning up...');
+      cancelAllRequests();
+      
+      // Clean up any blob URLs
+      if (podcastUrl && podcastUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(podcastUrl);
+      }
+    };
+  }, [cancelAllRequests, podcastUrl]);
 
   // If no file is uploaded, redirect back to home
   if (!uploadedFile) {
@@ -157,7 +288,7 @@ const ReaderView = () => {
 
       <TextSelectionSidebar
         isOpen={isTextSidebarOpen}
-        onClose={() => setIsTextSidebarOpen(false)}
+        onClose={handleSidebarClose} // Use the new handler with cancellation
         selectedText={selectedText}
         relatedSections={relatedSections}
         insights={insights}
