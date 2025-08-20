@@ -1,0 +1,51 @@
+# backend/requirements-core.txt - Essential packages only for Docker build
+# This is a minimal set to ensure the application can start
+
+# Web Framework (essential)
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Core dependencies for search functionality
+rank-bm25==0.2.2
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Basic dependencies
+python-dotenv==1.0.0
+pydantic-settings==2.0.3
+requests==2.31.0
+anyio==4.0.0
+
+# Core ML packages (pinned versions for stability)
+sentence-transformers==2.2.2
+faiss-cpu==1.7.4
+torch==2.1.0
+torchvision==0.16.0
+torchaudio==2.1.0
+
+# Essential processing
+numpy==1.24.3
+pandas==2.0.3
+nltk==3.8.1
+
+# LLM packages
+langchain==0.3.27
+langchain-google-genai==2.0.10
+google-generativeai==0.8.5
+
+# Audio processing
+pydub==0.25.1
+
+# PDF processing (minimal)
+PyMuPDF==1.23.0
+
+# Optional packages (can be installed at runtime if needed)
+# scikit-learn
+# lightgbm
+# joblib
+# pytesseract
+# azure-cognitiveservices-speech
+# langchain-openai
+# langchain-community
+# google-cloud-texttospeech

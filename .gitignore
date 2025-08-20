@@ -27,3 +27,4 @@ yarn-error.log*
 
 # Data Files (Do not commit user-uploaded data or generated indexes)
 backend/data/
+/data

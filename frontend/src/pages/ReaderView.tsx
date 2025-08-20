@@ -79,7 +79,7 @@ const ReaderView = () => {
     setPodcastUrl(null);
     setError(null);
     
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
     try {
       // Step 1: Fetch Related Sections
@@ -212,7 +212,7 @@ const ReaderView = () => {
       return;
     }
     
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
     
     try {
       // Fetch the PDF from backend

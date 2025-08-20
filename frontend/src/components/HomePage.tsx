@@ -32,7 +32,7 @@ const HomePage = () => {
 
       try {
         // Use the backend URL. Vite's import.meta.env can make this configurable.
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
         const response = await fetch(`${apiUrl}/api/ingest`, {
           method: 'POST',
           body: formData,
