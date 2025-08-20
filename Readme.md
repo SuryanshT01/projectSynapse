@@ -9,6 +9,9 @@
 
 Project Synapse transforms static PDF libraries into dynamic, interconnected knowledge ecosystems. Built for researchers, students, and professionals who need to quickly surface hidden connections, contradictions, and insights across their document collections.
 
+![Project Synapse Homepage](screenshots/HomePage.png)
+*Clean, intuitive interface for document upload and management*
+
 ---
 
 ## 🏆 Hackathon Challenge Solution
@@ -35,11 +38,17 @@ Project Synapse transforms static PDF libraries into dynamic, interconnected kno
 - **Text selection triggers** instant semantic search across document library
 - **Speed-optimized** response under 1 second for user engagement
 
+![PDF Viewer Interface](screenshots/PDFView.png)
+*Adobe PDF Embed API integration with seamless text selection*
+
 ### **Step 2: Connecting the Dots**
 - **Semantic similarity search** using sentence-transformers + FAISS
 - **Up to 5 relevant sections** with contextual snippets
 - **Click-to-navigate** directly to related PDF sections
 - **Cross-document insights** grounded in user's personal library
+
+![Relevant Sections Display](screenshots/RelevantSection.png)
+*Instant cross-document connections with contextual snippets*
 
 ### **Step 3: AI-Powered Insights** 🧠
 - **Contradiction detection** across different documents
@@ -47,11 +56,17 @@ Project Synapse transforms static PDF libraries into dynamic, interconnected kno
 - **Cross-document examples** and inspirations
 - **Contextual understanding** powered by Google Gemini
 
+![AI Insights Generation](screenshots/AIinsights.png)
+*Deep AI analysis revealing contradictions and key insights*
+
 ### **Step 4: Audio Experience** 🎧
 - **2-speaker podcast generation** (2-5 minutes)
 - **Natural conversation flow** discussing selected topics
 - **Azure TTS integration** for production-quality audio
 - **On-the-go learning** for busy professionals
+
+![Audio Podcast Interface](screenshots/PodcastAudioSummary.png)
+*Natural 2-speaker conversations generated from document insights*
 
 ---
 
@@ -156,6 +171,9 @@ open http://localhost:8080
 4. **Requests podcast**: 3-minute audio overview with natural speaker dialogue
 
 **Result**: From isolated reading to connected understanding in seconds
+
+![Navigate to Related PDFs](screenshots/NavigateToPDFs.png)
+*One-click navigation to relevant sections across document library*
 
 ---
 
@@ -263,11 +281,22 @@ npm run dev
 
 ## 🎤 Live Demo Highlights
 
+### **Complete User Journey Demonstration**
+
 1. **Upload Demo**: Bulk PDF ingestion with real-time progress
+   ![Homepage Interface](screenshots/HomePage.png)
+
 2. **Search Demo**: Text selection → instant cross-document connections
+   ![PDF Reading Experience](screenshots/PDFView.png)
+
 3. **Insights Demo**: AI-powered contradiction detection
+   ![AI-Generated Insights](screenshots/AIinsights.png)
+
 4. **Audio Demo**: Generated podcast playback
+   ![Podcast Generation](screenshots/PodcastAudioSummary.png)
+
 5. **Navigation Demo**: Click-to-jump PDF navigation
+   ![Cross-Document Navigation](screenshots/NavigateToPDFs.png)
 
 ---
 
