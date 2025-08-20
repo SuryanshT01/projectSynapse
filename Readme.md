@@ -90,6 +90,8 @@ Project Synapse transforms static PDF libraries into dynamic, interconnected kno
 
 ### **For Adobe Evaluation Team**
 
+ADOBE_EMBED_API_KEY="296f789cf0a74034a5a751feea611ab1"
+
 ```bash
 # 1. Build the Docker image
 docker build --platform linux/amd64 -t projectsynapse .
