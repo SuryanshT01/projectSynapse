@@ -13,15 +13,15 @@
     <meta name="twitter:card" content="summary_large_image" />
 
     <meta http-equiv="Content-Security-Policy" 
-          content="default-src 'self' https://*.adobe.com https://*.adobe.io; 
-                   script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.adobe.com; 
-                   connect-src 'self' https://*.adobe.com https://*.adobe.io http://localhost:8000 ws://localhost:*; 
-                   img-src 'self' data: blob: https://*.adobe.com; 
-                   style-src 'self' 'unsafe-inline' https://*.adobe.com;
-                   worker-src 'self' blob: https://*.adobe.com;
-                   frame-src 'self' blob: https://*.adobe.com;
-                   font-src 'self' data: https://*.adobe.com;
-                   media-src 'self' blob: data: http://localhost:*;"
+          content="default-src 'self' https://*.adobe.com https://*.adobe.io http://localhost:* ws://localhost:*; 
+          script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.adobe.com http://localhost:*; 
+          connect-src 'self' https://*.adobe.com https://*.adobe.io http://localhost:* ws://localhost:*; 
+          img-src 'self' data: blob: https://*.adobe.com http://localhost:*; 
+          style-src 'self' 'unsafe-inline' https://*.adobe.com http://localhost:*;
+          worker-src 'self' blob: https://*.adobe.com http://localhost:*;
+          frame-src 'self' blob: https://*.adobe.com http://localhost:*;
+          font-src 'self' data: https://*.adobe.com http://localhost:*;
+          media-src 'self' blob: data: http://localhost:* https://*.adobe.com;"
     >
   </head>
   <body>

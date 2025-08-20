@@ -4,7 +4,7 @@ import AdobePDFViewer from './AdobePDFViewer';
 interface PDFViewerProps {
   onTextSelection: (text: string) => void;
   uploadedFile: File | null;
-  targetPage?: number | null;
+  targetPage: number | null;
 }
 
 const PDFViewer = ({ onTextSelection, uploadedFile, targetPage }: PDFViewerProps) => {

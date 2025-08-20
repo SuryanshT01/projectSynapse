@@ -5,7 +5,7 @@ import type { AdobeDCView } from '@/types/adobe';
 interface AdobePDFViewerProps {
   file: File | null;
   onTextSelection: (text: string) => void;
-  targetPage?: number | null;
+  targetPage: number | null;
 }
 
 const ADOBE_VIEWER_ID = 'adobe-dc-view';
@@ -14,7 +14,7 @@ const ADOBE_SDK_URL = 'https://acrobatservices.adobe.com/view-sdk/viewer.js';
 const AdobePDFViewer = ({ file, onTextSelection, targetPage }: AdobePDFViewerProps) => {
   const viewerRef = useRef<HTMLDivElement>(null);
   const adobeDCViewRef = useRef<AdobeDCView | null>(null);
-  const apisRef = useRef<any>(null); // Store APIs reference
+  const apisRef = useRef<any>(null);
   const [sdkReady, setSdkReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,22 +59,20 @@ const AdobePDFViewer = ({ file, onTextSelection, targetPage }: AdobePDFViewerPro
           divId: ADOBE_VIEWER_ID,
         });
 
-        // ✅ FIXED: Correct event options structure
+        // Event options structure
         const eventOptions = {
           listenOn: [window.AdobeDC.View.Enum.FilePreviewEvents.PREVIEW_SELECTION_END],
           enableFilePreviewEvents: true
         };
 
-        // ✅ FIXED: Register callback BEFORE previewFile
+        // Register callback BEFORE previewFile
         adobeDCViewRef.current.registerCallback(
           window.AdobeDC.View.Enum.CallbackType.EVENT_LISTENER,
           async (event: any) => {
-            // ✅ FIXED: Correct event enum path
             if (event.type === window.AdobeDC.View.Enum.FilePreviewEvents.PREVIEW_SELECTION_END) {
               console.log('✅ PREVIEW_SELECTION_END event fired!');
               
               if (apisRef.current) {
-                // ✅ FIXED: Add delay to avoid race condition
                 setTimeout(async () => {
                   try {
                     const result = await apisRef.current.getSelectedContent();
@@ -87,7 +85,7 @@ const AdobePDFViewer = ({ file, onTextSelection, targetPage }: AdobePDFViewerPro
                   } catch (e) {
                     console.error("❌ Could not get selected content:", e);
                   }
-                }, 50); // 50ms delay fixes race condition
+                }, 50);
               }
             }
           },
@@ -107,7 +105,7 @@ const AdobePDFViewer = ({ file, onTextSelection, targetPage }: AdobePDFViewerPro
           }
         );
 
-        // ✅ FIXED: Store APIs reference when preview is ready
+        // Store APIs reference when preview is ready
         previewFilePromise.then(async (adobeViewer) => {
           if (!isComponentMounted || !adobeDCViewRef.current) return;
 
@@ -115,6 +113,26 @@ const AdobePDFViewer = ({ file, onTextSelection, targetPage }: AdobePDFViewerPro
           try {
             apisRef.current = await adobeViewer.getAPIs();
             console.log('✅ APIs stored successfully');
+
+            // ✅ NAVIGATE HERE: After APIs are ready and targetPage exists
+            if (targetPage && targetPage > 0) {
+              console.log(`🔄 Attempting to navigate to page ${targetPage}...`);
+              
+              // Add small delay to ensure PDF is fully rendered
+              setTimeout(() => {
+                if (apisRef.current && typeof apisRef.current.gotoLocation === 'function') {
+                  apisRef.current.gotoLocation(targetPage) // ✅ CORRECT: Direct number parameter
+                    .then(() => {
+                      console.log(`✅ Successfully navigated to page ${targetPage}`);
+                    })
+                    .catch((error: any) => {
+                      console.error(`❌ Navigation failed:`, error);
+                    });
+                } else {
+                  console.error('❌ gotoLocation method not available');
+                }
+              }, 100); // Small delay for PDF rendering
+            }
           } catch (e) {
             console.error("❌ Could not get APIs:", e);
           }
@@ -131,14 +149,7 @@ const AdobePDFViewer = ({ file, onTextSelection, targetPage }: AdobePDFViewerPro
       isComponentMounted = false;
       apisRef.current = null;
     };
-  }, [sdkReady, file, onTextSelection]);
-
-  // Effect to navigate to the correct page when targetPage changes
-  useEffect(() => {
-    if (typeof targetPage === 'number' && apisRef.current) {
-      apisRef.current.gotoLocation({ pageNumber: targetPage });
-    }
-  }, [targetPage, apisRef]);
+  }, [sdkReady, file, onTextSelection, targetPage]); // ✅ ADDED targetPage to dependencies
 
   if (error) {
     return (

@@ -37,6 +37,7 @@ export interface AdobeDCView {
     callback: (event: any) => void,
     options?: any
   ): void;
+  goToLocation(location: { pageNumber: number; }): void;
 }
 
 export interface AdobeViewer {
@@ -45,6 +46,7 @@ export interface AdobeViewer {
 
 export interface AdobeAPIs {
   getSelectedContent(): Promise<{ type: 'text'; data: string }>;
+  gotoLocation(pageNumber: number): Promise<boolean>;
 }
 
 export interface AdobeViewerConfig {
