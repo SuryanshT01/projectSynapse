@@ -16,63 +16,6 @@ This guide contains practical debugging information, working configurations, and
 
 ---
 
-## 🔧 Working Environment Variables
-
-### **Demo .env File (Project Root)**
-```env
-# Project Synapse - Unified Environment Configuration
-# This file contains all environment variables for both frontend and backend
-
-# =============================================================================
-# FRONTEND CONFIGURATION
-# =============================================================================
-
-# Adobe PDF Embed API Client ID
-# Get your client ID from: https://www.adobe.com/go/dcsdks_credentials
-VITE_ADOBE_CLIENT_ID="296f789cf0a74034a5a751feea611ab1"
-
-# Backend API URL
-VITE_API_URL=http://localhost:8000
-
-# =============================================================================
-# BACKEND CONFIGURATION
-# =============================================================================
-
-# LLM Configuration
-LLM_PROVIDER="gemini"
-# For Gemini, you need to set up Google Application Credentials.
-# For local dev, i have used an API key instead:
-GOOGLE_API_KEY="AIzaSyBFxkwdiVV0pYxTjCvztqxTpNmLpTU-Klo"
-GEMINI_MODEL="gemini-2.5-flash" 
-
-# TTS (Text-to-Speech) Configuration
-TTS_PROVIDER="azure"
-AZURE_TTS_KEY="5bnemDkUQOsIXJRYusFCEKx2nhAAzLE1k7fNtwW3HxjZ6w6nvqV4JQQJ99BHACfhMk5XJ3w3AAAAACOGiAdH"
-AZURE_TTS_ENDPOINT="https://surya-meinv28c-swedencentral.cognitiveservices.azure.com"
-AZURE_TTS_DEPLOYMENT="tts"
-AZURE_TTS_API_VERSION="2024-08-01-preview"
-AZURE_TTS_VOICE="alloy"
-
-# =============================================================================
-# DEVELOPMENT NOTES
-# =============================================================================
-# This file is for local development. In production, these will be passed by the docker run command.
-```
-
-### **Frontend .env File (frontend/.env)**
-```env
-# Adobe PDF Embed API Client ID
-VITE_ADOBE_CLIENT_ID="296f789cf0a74034a5a751feea611ab1"
-
-# Backend API URL - Local Development
-VITE_API_URL=http://localhost:8000
-
-# Development Mode
-NODE_ENV=development
-```
-
----
-
 ## 🐳 Docker Commands (Tested)
 
 ### **1. Build Commands**
@@ -95,21 +38,6 @@ time docker build -t projectsynapse .
 #### **Basic Run (Local Development)**
 ```bash
 docker run -d --name projectsynapse-container -p 8080:8080 projectsynapse
-```
-
-#### **With Environment Variables (Adobe Evaluation Format)**
-```bash
-docker run -d \
-  --name projectsynapse-eval \
-  -p 8080:8080 \
-  -e ADOBE_EMBED_API_KEY="296f789cf0a74034a5a751feea611ab1" \
-  -e LLM_PROVIDER="gemini" \
-  -e GOOGLE_API_KEY="AIzaSyBFxkwdiVV0pYxTjCvztqxTpNmLpTU-Klo" \
-  -e GEMINI_MODEL="gemini-2.5-flash" \
-  -e TTS_PROVIDER="azure" \
-  -e AZURE_TTS_KEY="5bnemDkUQOsIXJRYusFCEKx2nhAAzLE1k7fNtwW3HxjZ6w6nvqV4JQQJ99BHACfhMk5XJ3w3AAAAACOGiAdH" \
-  -e AZURE_TTS_ENDPOINT="https://surya-meinv28c-swedencentral.cognitiveservices.azure.com" \
-  projectsynapse
 ```
 
 #### **With Credentials File Mount**
