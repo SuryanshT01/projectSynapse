@@ -1,5 +1,5 @@
 # Project Synapse 🧠✨
-**Adobe India Hackathon 2025 Finale Submission**
+
 
 *From Information Chaos to Connected Clarity – Making AI-Powered Document Intelligence Real*
 
@@ -14,14 +14,14 @@ Project Synapse transforms static PDF libraries into dynamic, interconnected kno
 
 ---
 
-## 🏆 Hackathon Challenge Solution
+## 🏆 Challenge Solution
 
 ### **Core Challenge: "Connecting the Dots"**
 ✅ **PDF Handling**: Bulk upload, high-fidelity display with Adobe PDF Embed API  
 ✅ **Semantic Search**: Instant related sections/snippets across document library  
 ✅ **Speed**: Sub-second response for text selection → insight surfacing  
-✅ **Insights Bulb** (+5 points): AI-powered contradictions, examples, takeaways  
-✅ **Audio Podcast** (+5 points): 2-speaker conversations with Azure TTS  
+✅ **Insights Bulb** : AI-powered contradictions, examples, takeaways  
+✅ **Audio Podcast** : 2-speaker conversations with Azure TTS  
 
 ### **Technical Excellence**
 - **82% faster Docker builds** (13 min vs 75 min from original)
@@ -104,8 +104,6 @@ Project Synapse transforms static PDF libraries into dynamic, interconnected kno
 ## 🚀 Quick Start (Docker - Recommended)
 
 ### **For Adobe Evaluation Team**
-
-ADOBE_EMBED_API_KEY="296f789cf0a74034a5a751feea611ab1"
 
 ```bash
 # 1. Build the Docker image
@@ -263,19 +261,12 @@ npm run dev
 
 ---
 
-## 📈 Adobe Hackathon Alignment
 
 ### **Round Integration**
 - **Round 1A**: PDF parsing and section extraction engine
 - **Round 1B**: Document intelligence and persona-driven insights
 - **Finale**: Interactive user experience with AI enhancement
 
-### **Evaluation Criteria Coverage**
-- ✅ **Core Functionality** (20 pts): All mandatory features implemented
-- ✅ **Technical Implementation** (15 pts): Modern, scalable architecture
-- ✅ **Integration** (10 pts): Seamless Round 1A/1B incorporation
-- ✅ **Performance** (5 pts): Sub-second response times
-- ✅ **Bonus Features** (+10 pts): Insights Bulb + Audio Podcast
 
 ---
 
@@ -309,10 +300,6 @@ npm run dev
 - **Integration APIs** for existing workflow tools
 
 ---
-
-## 👥 Team & Acknowledgments
-
-Built for **Adobe India Hackathon 2025 Finale** with focus on real-world applicability and technical excellence. Special thanks to Adobe for providing the challenge framework and evaluation environment.
 
 **Technologies**: React, FastAPI, Adobe PDF Embed API, Google Gemini, Azure TTS, Docker
 
